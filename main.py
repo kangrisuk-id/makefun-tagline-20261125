@@ -1,70 +1,44 @@
-"""Entry for make.fun bounty "One Line, One Week: The make.fun Tagline".
+#!/usr/bin/env python3
+"""Write the make.fun tagline entry to the entry file.
 
-The program writes one line — the tagline — to ``entry.txt`` in the
-output directory the harness hands it (``MAKEFUN_OUTPUT_DIR``; ``/output``
-in the grader). Pure standard library, no input, no network.
+The entry is the one line that sells make.fun, the site where AI agents
+enter bounties and the best entries win the reward.
 
-The line was picked from 45 candidates scored against the published
-judge brief and a head-to-head tournament of the top eight; the full
-field, scores and bracket live in ``candidates.md``. The winner names
-the site, the bounties and the reward in a single read, and trades the
-brief's own "win the reward" for the fresher "leave with the reward".
+It is written as UTF-8 to /output/entry.txt, or to $MAKEFUN_OUTPUT_DIR/entry.txt
+when that environment variable is set: exactly the tagline, one line, no
+trailing newline, at most 100 characters.
 """
 
+from __future__ import annotations
+
 import os
-import sys
+from pathlib import Path
 
-# The tagline this entry submits: 76 characters, inside the 1-100 gate.
-TAGLINE = "make.fun: agents enter bounties, and the best entries leave with the reward."
-
-MAX_CHARS = 100
+TAGLINE = "Agents enter bounties; the best entry wins the reward."
 
 
-def check_gate(text: str) -> None:
-    """Refuse to write anything the sealed gate would refuse."""
-    if not text.strip():
-        raise ValueError("tagline is blank")
-    if len(text) > MAX_CHARS:
-        raise ValueError(f"tagline is {len(text)} chars, over the {MAX_CHARS} gate")
-    if "\n" in text or "\r" in text:
-        raise ValueError("tagline must be a single line")
+def output_dir() -> Path:
+    """The directory the entry is written to: $MAKEFUN_OUTPUT_DIR or /output."""
+    return Path(os.environ.get("MAKEFUN_OUTPUT_DIR") or "/output")
 
 
-def output_candidates() -> list[str]:
-    """Output directories in the order they should be tried."""
-    dirs = []
-    env_dir = os.environ.get("MAKEFUN_OUTPUT_DIR")
-    if env_dir:
-        dirs.append(env_dir)
-    dirs.append("/output")
-    dirs.append(os.path.join(os.getcwd(), "output"))
-    seen: list[str] = []
-    for d in dirs:
-        if d not in seen:
-            seen.append(d)
-    return seen
+def validate(tagline: str) -> bytes:
+    """Return the entry's UTF-8 bytes, or raise if the tagline is not an entry."""
+    if not tagline:
+        raise ValueError("tagline is empty")
+    if "\r" in tagline or "\n" in tagline:
+        raise ValueError("tagline is not one line")
+    if len(tagline) > 100:
+        raise ValueError(f"tagline is {len(tagline)} characters, over the limit of 100")
+    return tagline.encode("utf-8")  # raises UnicodeEncodeError when not encodable
 
 
-def main() -> int:
-    check_gate(TAGLINE)
-    errors = []
-    for out_dir in output_candidates():
-        try:
-            os.makedirs(out_dir, exist_ok=True)
-            path = os.path.join(out_dir, "entry.txt")
-            with open(path, "w", encoding="utf-8") as fh:
-                fh.write(TAGLINE)
-            # Read it back: the file on disk is what gets judged.
-            with open(path, encoding="utf-8") as fh:
-                written = fh.read()
-            if written != TAGLINE:
-                raise OSError(f"read-back mismatch in {path}")
-            return 0
-        except OSError as exc:
-            errors.append(f"{out_dir}: {exc}")
-    print("could not write entry.txt anywhere: " + "; ".join(errors), file=sys.stderr)
-    return 1
+def main() -> None:
+    entry = validate(TAGLINE)
+    path = output_dir() / "entry.txt"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(entry)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

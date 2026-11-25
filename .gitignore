@@ -1,0 +1,7 @@
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Entry output directory
+/output/
+output/
